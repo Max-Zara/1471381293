@@ -216,12 +216,12 @@ models.run <- unique(classification.results$Model.Form)
 #Chart Results of All Models
 for(icount in icount.list){
   print(paste0("Printing Charts for: ",icount))
-  classification.results <- read.csv(paste0("Results\\",icount,"-OrderedSplit-LinearNonLinearClassificationResults.csv"))
-  subfolder.to.use <- "\\Detrended-Dummy-Ordered"
+  classification.results <- read.csv(paste0("Results\\",icount,"-OrderedSplitBrexitOOS-LinearNonLinearClassificationResults.csv"))
+  subfolder.to.use <- "\\Detrended-Dummy-Brexit"
   
-  for(i.factor.to.test in c("Retail.Log","Retail.vs.USA.Dif",paste0("Retail.Log.",seq(1,6)))){
+  for(i.factor.to.test in c("Retail.Log","Retail.vs.USA.1",paste0("Retail.Log.",seq(1,6)))){
 reset_par(); par(mfrow=c(1,1))
-Retail.Base <- i.factor.to.test #"Retail.Log.6" #or "Retail.vs.USA.Dif" "Retail.Log"
+Retail.Base <- i.factor.to.test #"Retail.Log.6" #or "Retail.vs.USA.1" "Retail.Log"
 iChart <- classification.results[classification.results$Model.Form=="Logit" 
                              & classification.results$Retail.Base == Retail.Base ,]
 iChart <- iChart[iChart$Model.Type == "Pos" ,]
@@ -295,7 +295,7 @@ domestic.logit.lag.results <- classification.results[classification.results$Reta
                                                      & classification.results$Model.Form=="Logit" 
                                                      & classification.results$Include.AR==FALSE 
                                                      & classification.results$Include.USDX==FALSE ,]
-vs.USA.logit.lag.results <- classification.results[classification.results$Retail.Base=="Retail.vs.USA.Dif"
+vs.USA.logit.lag.results <- classification.results[classification.results$Retail.Base=="Retail.vs.USA.1"
                                                      & classification.results$Model.Form=="Logit" 
                                                      & classification.results$Include.AR==FALSE 
                                                      & classification.results$Include.USDX==FALSE ,]
