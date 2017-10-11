@@ -38,6 +38,7 @@ for(icount in icount.list){
 months.to.analyse <- 12
 use.trade.weights <- FALSE # TRUE
 detrend.data <- TRUE
+normalize.data <- TRUE
 if(icount == "USA"){use.trade.weights <- TRUE} # TRUE}
 
 
@@ -149,7 +150,7 @@ response.results <- list(); run.response <- TRUE;
 #classification.results <- load("ClassificationResults.Rda")
 
 #Save the Table Before Sampling
-retail.ppp.saved <- retail.ppp
+retail.ppp.to.use <- retail.ppp.saved <- retail.ppp
 
 repeat{
 
@@ -160,22 +161,14 @@ repeat{
   
   for(i.factor.to.test in c("Retail.Log","Retail.vs.USA.1",paste0("Retail.Log.",seq(1,6)))){
     
-    #Renormalize the Factor - NEED TO FIX THIS!!!!
+    #Renormalize the Factor
+    if(normalize.data){
+      factor.y <- normalize(retail.ppp[,i.factor.to.test],0.1)
+    }else{
+      factor.y <- retail.ppp[,i.factor.to.test]
+    }
     
-    ##GET FACTOR DENSITY (to calculate the median/mean responses of all methods)
-    i.temp <- normalize(retail.ppp.saved[,i.factor.to.test],0.1)
-    
-    plot(density(normalize(retail.ppp.saved[,i.factor.to.test],0)))
-    lines(density(normalize(retail.ppp.saved[,i.factor.to.test],0.1)),col="red")
-    lines(density(normalize(retail.ppp.saved[,i.factor.to.test],0.2)),col="blue")
-    
-    for(i.norm in seq(0,0.3,0.1)){
-    print(paste0(i.norm," - Mean :",
-    mean(normalize(retail.ppp.saved[,i.factor.to.test],i.norm))," Min: ",
-    min(normalize(retail.ppp.saved[,i.factor.to.test],i.norm)), "Max: ",
-    max(normalize(retail.ppp.saved[,i.factor.to.test],i.norm))))}
-    
-    factor.density <- hist(retail.ppp[,factor.to.test],plot=FALSE)
+    factor.density <- hist(factor.y,plot=FALSE)
     
     ##Extreme Densities
     response.density <- quantile(retail.ppp[,factor.to.test],probs = c(.05,.95))#c(.01,.02,.05,.1,.3,.7,.9,.95,.98,.99))
