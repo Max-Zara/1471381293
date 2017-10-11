@@ -137,7 +137,7 @@ if(runModel==FALSE){
   classification.results <- read.csv(paste0("Results\\",icount,"-MultiLag-LinearNonLinearClassificationResults.csv"))
 }else{
   repeat{
-  n.factor.to.test <- 8; n.sample <- n.AR <- n.Type <- n.USDX <- 2; n.lags <- 13
+  n.factor.to.test <- 8; n.sample <- n.AR <- n.Type <- n.USDX <- 2; n.lags <- (months.to.analyse+1)
   n.models <- 8
   expected.count <- n.factor.to.test * n.sample * n.lags* n.AR * n.USDX * n.Type * n.models
   for(i.factor.to.test in c("Retail.Log","Retail.vs.USA.1",paste0("Retail.Log.",seq(1,6)))){

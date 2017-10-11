@@ -151,62 +151,74 @@ response.results <- list(); run.response <- TRUE;
 #Save the Table Before Sampling
 retail.ppp.saved <- retail.ppp
 
-for(i.factor.to.test in c("Retail.Log","Retail.vs.USA.1",paste0("Retail.Log.",seq(1,6)))){
+repeat{
+
+  n.factor.to.test <- 8; n.sample <- n.AR <- n.USDX <- 2; n.lags <- (months.to.analyse+1)
+  n.models <- 8
+  class.expected.count <- n.factor.to.test * n.sample * n.lags* n.AR * n.USDX * n.models
+  response.expected.count <- n.factor.to.test * n.sample * n.lags* n.AR * n.USDX 
   
-  ##GET FACTOR DENSITY (to calculate the median/mean responses of all methods)
-  factor.density <- hist(retail.ppp[,factor.to.test],plot=FALSE)
-  ##Extreme Densities
-  response.density <- quantile(retail.ppp[,factor.to.test],probs = c(.05,.95))#c(.01,.02,.05,.1,.3,.7,.9,.95,.98,.99))
-  
-  for(i.sample  in c(TRUE,FALSE))
-  {
-    if(i.sample){ #Looking at prediction within sample
-      print("Doing In Sample")
-      retail.analysis <- retail.ppp.saved
-      retail.predict <- retail.ppp.saved
-    }else{
-      print("Doing Out Of Sample")
-      set.seed(10)
-      if(icount == "UK"){
-        retail.analysis <- retail.ppp.saved[retail.ppp.saved$Date < as.Date("2015-07-30"),]
-        retail.predict <- retail.ppp.saved[retail.ppp.saved$Date >= as.Date("2016-01-01"),]
-      }else{
-        retail.analysis <- as.data.frame(split.data.ordered(retail.ppp.saved,0.7)[1])
-        retail.predict <- as.data.frame(split.data.ordered(retail.ppp.saved,0.7)[2]);
-        colnames(retail.analysis) <- gsub("train.","",colnames(retail.analysis));
-        colnames(retail.predict) <- gsub("test.","",colnames(retail.predict))
-      }
-    }
+  for(i.factor.to.test in c("Retail.Log","Retail.vs.USA.1",paste0("Retail.Log.",seq(1,6)))){
     
-    ##Now Loop Through Lags to calculate how performance changes with inclusion
-    for(include.USDX in c(TRUE,FALSE)){
-      for(include.AR in c(TRUE,FALSE)){
-        print(paste0("Country: ",icount," Factor:",i.factor.to.test," Sample:",i.sample," USDX:",include.USDX," AR:",include.AR, " Dummies:",include.Dummy))
-        
-        if(run.classification){
-          results.frames <- Calculate.Response.Functions.And.Accuracy(retail.analysis,
-                                                                            retail.predict,i.sample,months.to.analyse,
-                                                                            include.USDX,include.AR,i.factor.to.test,
-                                                                            factor.density, include.Dummy)
-          #Consider Charting
-          #Chart.Fan.Models(results.frames[[2]],paste0(icount," LASSO "))
-          tmp.results <- c(Factor = i.factor.to.test, Lags=months.to.analyse, InSample = i.sample, include.AR = include.AR, 
-                           include.USDX = include.USDX, include.Dummy=include.Dummy, results.frames)
-          classification.results <- rbind(classification.results, tmp.results)
-        }
-        if(run.response){
-          response.frames <- Calculate.NonLinear.Responses(retail.analysis,
-                                                           retail.predict,i.sample,months.to.analyse,
-                                                           include.USDX,include.AR,i.factor.to.test,
-                                                           response.density, include.Dummy)
-          
-          tmp.results <- c(Factor = i.factor.to.test, Lags=months.to.analyse, InSample = i.sample, include.AR = include.AR, 
-                           include.USDX = include.USDX, include.Dummy=include.Dummy, response.frames)
-          response.results <- rbind(response.results, tmp.results)
+    #Renormalize the Factor
+    
+    ##GET FACTOR DENSITY (to calculate the median/mean responses of all methods)
+    factor.density <- hist(retail.ppp[,factor.to.test],plot=FALSE)
+    
+    ##Extreme Densities
+    response.density <- quantile(retail.ppp[,factor.to.test],probs = c(.05,.95))#c(.01,.02,.05,.1,.3,.7,.9,.95,.98,.99))
+    
+    for(i.sample  in c(TRUE,FALSE))
+    {
+      if(i.sample){ #Looking at prediction within sample
+        print("Doing In Sample")
+        retail.analysis <- retail.ppp.saved
+        retail.predict <- retail.ppp.saved
+      }else{
+        print("Doing Out Of Sample")
+        set.seed(10)
+        if(icount == "UK"){
+          retail.analysis <- retail.ppp.saved[retail.ppp.saved$Date < as.Date("2015-07-30"),]
+          retail.predict <- retail.ppp.saved[retail.ppp.saved$Date >= as.Date("2016-01-01"),]
+        }else{
+          retail.analysis <- as.data.frame(split.data.ordered(retail.ppp.saved,0.7)[1])
+          retail.predict <- as.data.frame(split.data.ordered(retail.ppp.saved,0.7)[2]);
+          colnames(retail.analysis) <- gsub("train.","",colnames(retail.analysis));
+          colnames(retail.predict) <- gsub("test.","",colnames(retail.predict))
         }
       }
-    }
-  }
+      
+      ##Now Loop Through Lags to calculate how performance changes with inclusion
+      for(include.USDX in c(TRUE,FALSE)){
+        for(include.AR in c(TRUE,FALSE)){
+          print(paste0("Country: ",icount," Factor:",i.factor.to.test," Sample:",i.sample," USDX:",include.USDX," AR:",include.AR, " Dummies:",include.Dummy))
+          
+          try({if(run.classification){
+            results.frames <- Calculate.Response.Functions.And.Accuracy(retail.analysis,
+                                                                              retail.predict,i.sample,months.to.analyse,
+                                                                              include.USDX,include.AR,i.factor.to.test,
+                                                                              factor.density, include.Dummy)
+            #Consider Charting
+            #Chart.Fan.Models(results.frames[[2]],paste0(icount," LASSO "))
+            tmp.results <- c(Factor = i.factor.to.test, Lags=months.to.analyse, InSample = i.sample, include.AR = include.AR, 
+                             include.USDX = include.USDX, include.Dummy=include.Dummy, results.frames)
+            classification.results <- rbind(classification.results, tmp.results)
+          }
+          if(run.response){
+            response.frames <- Calculate.NonLinear.Responses(retail.analysis,
+                                                             retail.predict,i.sample,months.to.analyse,
+                                                             include.USDX,include.AR,i.factor.to.test,
+                                                             response.density, include.Dummy)
+            
+            tmp.results <- c(Factor = i.factor.to.test, Lags=months.to.analyse, InSample = i.sample, include.AR = include.AR, 
+                             include.USDX = include.USDX, include.Dummy=include.Dummy, response.frames)
+            response.results <- rbind(response.results, tmp.results)
+          }
+          })
+    }}}}
+  
+  if(run.response & nrow(response.results) > 0.9*response.expected.count){break;}
+  if(run.classification & nrow(classification.results) > 0.9*class.expected.count){break;}
 }
 
 if(run.classification){
