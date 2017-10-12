@@ -593,6 +593,5 @@ MAE <- function(actual, predicted){mean(abs(actual-predicted))}
 RMSE <- function(actual, predicted){sqrt(mean((actual-predicted)^2))}
 
 
-normalize <- function(x) {return((x-min(x))/(max(x)-min(x)))}
 
 movsum <- function(x,n=25){filter(x,rep(1,n), sides=1)}

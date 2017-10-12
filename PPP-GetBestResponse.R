@@ -251,9 +251,9 @@ repeat{
 }
 
 if(run.classification){
-save(classification.results, file=paste0("Results\\",icount,"-Rescaled-MultiLag-ClassificationResults.Rda"))}
+save(classification.results, file=paste0("Results\\",icount,"-AbsoluteRescaled-MultiLag-ClassificationResults.Rda"))}
 if(run.response){
-save(response.results, file=paste0("Results\\",icount,"-Rescaled-MultiLag-ResponseResults.Rda"))}
+save(response.results, file=paste0("Results\\",icount,"-AbsoluteRescaled-MultiLag-ResponseResults.Rda"))}
 
 
 #load(paste0("Results\\",icount,"-Boot-ClassificationResults.Rda"))
@@ -281,7 +281,7 @@ chart.Factor <- "Retail.Log"
 chart.USDX <- TRUE
 chart.inSample <- FALSE
 for(chart.AR in c(TRUE,FALSE)){
-  for(chart.Factor in c("Retail.Log","Retail.vs.USA.Dif",paste0("Retail.Log.",seq(1,6)))){
+  for(chart.Factor in c("Retail.Log","Retail.vs.USA.1",paste0("Retail.Log.",seq(1,6)))){
     for(chart.USDX in c(TRUE,FALSE)){
       for(chart.inSample in c(TRUE,FALSE)){
         
@@ -312,11 +312,13 @@ for(chart.AR in c(TRUE,FALSE)){
           additional.heading = paste0(" AR:", chart.AR, " Factor:", chart.Factor," USDX:",chart.USDX, " Sample:", chart.inSample)
           
           if(length(tmp1[[7]])>1){
-          png(paste0("Images\\NonLinear\\",icount,"\\Detrended-Tanh\\",icount,"-NN-",
+          png(paste0("Images\\NonLinear\\",icount,"\\Normalized-Tanh\\",icount,"-NN-",
                      "Factor.",chart.Factor,"-AR.",chart.AR,"-USDX.",chart.USDX,"-InSample.",chart.inSample,".png"),width=1000,height=600)
           
+          if(normalize.data){optional.resize <- (max(retail.ppp[,chart.Factor])-min(retail.ppp[,chart.Factor]))*(1+2*norm.factor)}
+            
           Chart.NonLin.Responses(tmp1[[7]], additional.heading, optional.color = brewer.pal(10,"RdGy"), 
-                                 optional.nmonths = months.to.analyse, response.density = response.density)
+                                 optional.nmonths = months.to.analyse, response.density = response.density, optional.resize = 1)
           dev.off()
           }
         }

@@ -62,7 +62,8 @@ Get.OLS.Boot.Results <- function(retail.analysis, retail.predict, cols.to.use,i.
   return(ols.models)
 }
 
-Chart.NonLin.Responses <- function(temp.models, additional.heading = "", optional.divisor = 1, optional.color = brewer.pal(length(response.density),"Paired"), optional.nmonths = 12, response.density){
+Chart.NonLin.Responses <- function(temp.models, additional.heading = "", optional.divisor = 1, optional.color = brewer.pal(length(response.density),"Paired")
+                                   , optional.nmonths = 12, response.density, optional.resize = 1){
   
   par(mfrow=c(1,2))
   temp.means <- matrix(colSums(temp.models$t)/100,nrow=((optional.nmonths+1)*2+1))
@@ -72,19 +73,19 @@ Chart.NonLin.Responses <- function(temp.models, additional.heading = "", optiona
   
   #Derive Net Impact (Taking away response from 0 stimulation)
   #Normal response
-  temp.means1 <- temp.means[,1] - temp.means[1,1]
-  temp.means2 <- temp.means[,2] - temp.means[1,2]
+  temp.means1 <- (temp.means[,1] - temp.means[1,1])
+  temp.means2 <- (temp.means[,2] - temp.means[1,2])
   temp.means <- cbind(temp.means1,temp.means2)
   #Cumulative Response
   #temp.means[,(optional.nmnonths+3)] <- temp.means[,2:(optional.nmonths+1)] - temp.means[,1]
   
-  matplot(temp.means[2:(optional.nmonths+2),],type='l',col=optional.color,lty=1,lwd=2,main=paste0("Monthly:",additional.heading),
+  matplot(temp.means[2:(optional.nmonths+2),]*optional.resize,type='l',col=optional.color,lty=1,lwd=2,main=paste0("Monthly:",additional.heading),
           xlab = "No of Lags of PPP",ylab="Response")
   grid(NULL,NULL,col="darkgrey",lwd=2); abline(h=0)
   legend("bottomleft",legend = names(response.density), 
          col = optional.color
          , bg="transparent",bty='n',cex=1.5, pch=16)
-  matplot(temp.means[(optional.nmonths+3):((optional.nmonths+1)*2+1),],type='l',col=optional.color,lty=1,lwd=2,main=paste0("Cum:",additional.heading),
+  matplot(temp.means[(optional.nmonths+3):((optional.nmonths+1)*2+1),]*optional.resize,type='l',col=optional.color,lty=1,lwd=2,main=paste0("Cum:",additional.heading),
           xlab = "No of Lags of PPP",ylab="Response")
   grid(NULL,NULL,col="darkgrey",lwd=2); abline(h=0)
   legend("bottomleft",legend = names(response.density), 
@@ -440,7 +441,7 @@ Get.NonLinear.Density.Response <- function(retail.analysis, retail.predict, cols
               predictions.model = predict(decision.model, as.data.frame(t(response.input[,i.input])))}
           
           #Get the response (re-scaled)
-          response.results[i.input + (i.density-1)*ncol(default.response.input)] <- response.impact/response.density[i.density]
+          response.results[i.input + (i.density-1)*ncol(default.response.input)] <- response.impact/abs(response.density[i.density])
         }
       }
       
