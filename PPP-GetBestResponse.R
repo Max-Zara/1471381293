@@ -38,7 +38,7 @@ for(icount in icount.list){
 months.to.analyse <- 12
 use.trade.weights <- FALSE # TRUE
 detrend.data <- TRUE
-normalize.data <- TRUE
+normalize.data <- TRUE; norm.factor <- 0.1
 if(icount == "USA"){use.trade.weights <- TRUE} # TRUE}
 
 
@@ -157,13 +157,13 @@ repeat{
   n.factor.to.test <- 8; n.sample <- n.AR <- n.USDX <- 2; n.lags <- (months.to.analyse+1)
   n.models <- 8
   class.expected.count <- n.factor.to.test * n.sample * n.lags* n.AR * n.USDX * n.models
-  response.expected.count <- n.factor.to.test * n.sample * n.lags* n.AR * n.USDX 
+  response.expected.count <- n.factor.to.test * n.sample *  n.AR * n.USDX 
   
   for(i.factor.to.test in c("Retail.Log","Retail.vs.USA.1",paste0("Retail.Log.",seq(1,6)))){
     
     #Renormalize the Factor
     if(normalize.data){
-      factor.y <- normalize(retail.ppp[,i.factor.to.test],0.1)
+      factor.y <- normalize(retail.ppp[,i.factor.to.test],norm.factor)
     }else{
       factor.y <- retail.ppp[,i.factor.to.test]
     }
@@ -171,10 +171,11 @@ repeat{
     factor.density <- hist(factor.y,plot=FALSE)
     
     ##Extreme Densities
-    response.density <- quantile(retail.ppp[,factor.to.test],probs = c(.05,.95))#c(.01,.02,.05,.1,.3,.7,.9,.95,.98,.99))
+    response.density <- quantile(factor.y,probs = c(.05,.95))#c(.01,.02,.05,.1,.3,.7,.9,.95,.98,.99))
     
     for(i.sample  in c(TRUE,FALSE))
     {
+      retail.ppp.saved[,i.factor.to.test] <- normalize(retail.ppp.to.use[,i.factor.to.test],norm.factor)
       if(i.sample){ #Looking at prediction within sample
         print("Doing In Sample")
         retail.analysis <- retail.ppp.saved
@@ -199,37 +200,60 @@ repeat{
           print(paste0("Country: ",icount," Factor:",i.factor.to.test," Sample:",i.sample," USDX:",include.USDX," AR:",include.AR, " Dummies:",include.Dummy))
           
           try({if(run.classification){
-            results.frames <- Calculate.Response.Functions.And.Accuracy(retail.analysis,
-                                                                              retail.predict,i.sample,months.to.analyse,
-                                                                              include.USDX,include.AR,i.factor.to.test,
-                                                                              factor.density, include.Dummy)
-            #Consider Charting
-            #Chart.Fan.Models(results.frames[[2]],paste0(icount," LASSO "))
-            tmp.results <- c(Factor = i.factor.to.test, Lags=months.to.analyse, InSample = i.sample, include.AR = include.AR, 
-                             include.USDX = include.USDX, include.Dummy=include.Dummy, results.frames)
-            classification.results <- rbind(classification.results, tmp.results)
+            
+            if(length(classification.results)>0){tmp.class <- as.data.frame(classification.results[,1:(ncol(classification.results)-1)])
+            tmp.check <- tmp.class[tmp.class$Factor == i.factor.to.test & 
+                                     tmp.class$include.AR == include.AR & 
+                                     tmp.class$include.USDX == include.USDX & 
+                                     tmp.class$include.Dummy == include.Dummy]}else{tmp.check <- data.frame()}
+            
+            if(nrow(tmp.check)==0){
+              results.frames <- Calculate.Response.Functions.And.Accuracy(retail.analysis,
+                                                                                retail.predict,i.sample,months.to.analyse,
+                                                                                include.USDX,include.AR,i.factor.to.test,
+                                                                                factor.density, include.Dummy)
+              #Consider Charting
+              #Chart.Fan.Models(results.frames[[2]],paste0(icount," LASSO "))
+              tmp.results <- c(Factor = i.factor.to.test, Lags=months.to.analyse, InSample = i.sample, include.AR = include.AR, 
+                               include.USDX = include.USDX, include.Dummy=include.Dummy, results.frames)
+              classification.results <- rbind(classification.results, tmp.results)
+            }
           }
           if(run.response){
-            response.frames <- Calculate.NonLinear.Responses(retail.analysis,
-                                                             retail.predict,i.sample,months.to.analyse,
-                                                             include.USDX,include.AR,i.factor.to.test,
-                                                             response.density, include.Dummy)
             
-            tmp.results <- c(Factor = i.factor.to.test, Lags=months.to.analyse, InSample = i.sample, include.AR = include.AR, 
-                             include.USDX = include.USDX, include.Dummy=include.Dummy, response.frames)
-            response.results <- rbind(response.results, tmp.results)
+            if(length(response.results)>0){tmp.response <- as.data.frame(response.results[,1:(ncol(response.results)-1)])
+            tmp.check <- tmp.response[tmp.response$Factor == i.factor.to.test & 
+                                        tmp.response$include.AR == include.AR & 
+                                        tmp.response$include.USDX == include.USDX & 
+                                        tmp.response$InSample == i.sample,]}else{tmp.check<-data.frame()}
+            if(nrow(tmp.check)==0){
+            
+              response.frames <- Calculate.NonLinear.Responses(retail.analysis,
+                                                               retail.predict,i.sample,months.to.analyse,
+                                                               include.USDX,include.AR,i.factor.to.test,
+                                                               response.density, include.Dummy)
+              
+              tmp.results <- c(Factor = i.factor.to.test, Lags=months.to.analyse, InSample = i.sample, include.AR = include.AR, 
+                               include.USDX = include.USDX, include.Dummy=include.Dummy, response.frames)
+              response.results <- rbind(response.results, tmp.results)
+            }
           }
           })
     }}}}
   
-  if(run.response & nrow(response.results) > 0.9*response.expected.count){break;}
-  if(run.classification & nrow(classification.results) > 0.9*class.expected.count){break;}
+  if(run.response)
+    if(nrow(response.results) > 0.9*response.expected.count)
+        break;
+  
+  if(run.classification)
+    if(nrow(classification.results) > 0.9*class.expected.count)
+      break;
 }
 
 if(run.classification){
-save(classification.results, file=paste0("Results\\",icount,"-.5.95-MultiLag-ClassificationResults.Rda"))}
+save(classification.results, file=paste0("Results\\",icount,"-Rescaled-MultiLag-ClassificationResults.Rda"))}
 if(run.response){
-save(response.results, file=paste0("Results\\",icount,"-.5.95-MultiLag-ResponseResults.Rda"))}
+save(response.results, file=paste0("Results\\",icount,"-Rescaled-MultiLag-ResponseResults.Rda"))}
 
 
 #load(paste0("Results\\",icount,"-Boot-ClassificationResults.Rda"))
