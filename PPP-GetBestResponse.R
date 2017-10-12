@@ -172,6 +172,7 @@ repeat{
     
     ##Extreme Densities
     response.density <- quantile(factor.y,probs = c(.05,.95))#c(.01,.02,.05,.1,.3,.7,.9,.95,.98,.99))
+    original.response.density <- quantile(retail.ppp[,i.factor.to.test],probs = c(0.05,0.95))
     
     for(i.sample  in c(TRUE,FALSE))
     {
@@ -231,7 +232,7 @@ repeat{
               response.frames <- Calculate.NonLinear.Responses(retail.analysis,
                                                                retail.predict,i.sample,months.to.analyse,
                                                                include.USDX,include.AR,i.factor.to.test,
-                                                               response.density, include.Dummy)
+                                                               response.density, include.Dummy, original.response.density)
               
               tmp.results <- c(Factor = i.factor.to.test, Lags=months.to.analyse, InSample = i.sample, include.AR = include.AR, 
                                include.USDX = include.USDX, include.Dummy=include.Dummy, response.frames)
@@ -312,7 +313,7 @@ for(chart.AR in c(TRUE,FALSE)){
           additional.heading = paste0(" AR:", chart.AR, " Factor:", chart.Factor," USDX:",chart.USDX, " Sample:", chart.inSample)
           
           if(length(tmp1[[7]])>1){
-          png(paste0("Images\\NonLinear\\",icount,"\\Normalized-Tanh\\",icount,"-NN-",
+          png(paste0("Images\\NonLinear\\",icount,"\\Abs-Normalized-Tanh\\",icount,"-NN-",
                      "Factor.",chart.Factor,"-AR.",chart.AR,"-USDX.",chart.USDX,"-InSample.",chart.inSample,".png"),width=1000,height=600)
           
           if(normalize.data){optional.resize <- (max(retail.ppp[,chart.Factor])-min(retail.ppp[,chart.Factor]))*(1+2*norm.factor)}

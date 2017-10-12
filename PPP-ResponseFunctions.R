@@ -395,7 +395,7 @@ Get.Cols.To.Use <- function(i.lag, include.USDX, include.AR, include.Dummy){
 
 
 Get.NonLinear.Density.Response <- function(retail.analysis, retail.predict, cols.to.use, Model.Form="NN",i.factor.to.test,
-                            i.lag, include.USDX, include.AR, response.density, include.Dummy){ 
+                            i.lag, include.USDX, include.AR, response.density, include.Dummy, original.response.density){ 
   print(paste0(Sys.time()," Started ",Model.Form))
   
   train.x <- retail.analysis[complete.cases(retail.analysis), c(cols.to.use,i.factor.to.test)]
@@ -441,7 +441,7 @@ Get.NonLinear.Density.Response <- function(retail.analysis, retail.predict, cols
               predictions.model = predict(decision.model, as.data.frame(t(response.input[,i.input])))}
           
           #Get the response (re-scaled)
-          response.results[i.input + (i.density-1)*ncol(default.response.input)] <- response.impact/abs(response.density[i.density])
+          response.results[i.input + (i.density-1)*ncol(default.response.input)] <- response.impact/response.density[i.density]*sign(original.response.density[i.density])
         }
       }
       
@@ -462,13 +462,13 @@ Get.NonLinear.Density.Response <- function(retail.analysis, retail.predict, cols
 }
 
 Calculate.NonLinear.Responses <- function(retail.analysis, retail.predict, i.sample, i.lag, include.USDX,
-                                          include.AR, i.factor.to.test, response.density, include.Dummy){
+                                          include.AR, i.factor.to.test, response.density, include.Dummy, original.response.density){
   cols.to.use <- Get.Cols.To.Use(i.lag,include.USDX, include.AR, include.Dummy)
   results.frame <- list()
   
   neural.results <- Get.NonLinear.Density.Response(retail.analysis, retail.predict, cols.to.use
                                           , Model.Form="NN",i.factor.to.test, i.lag
-                                          , include.USDX, include.AR, response.density, include.Dummy)
+                                          , include.USDX, include.AR, response.density, include.Dummy, original.response.density)
   #Chart.Fan.Models(neural.results,"NEURAL NET ")
   results.frame[[length(results.frame)+1]] <- neural.results
   names(results.frame)[length(results.frame)] <- "NN"
