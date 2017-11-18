@@ -5,7 +5,7 @@ source("Code//PPP-Functions.R")
 source("Code//PPP-ResponseFunctions.R")
 
 #######################################################
-
+library(RColorBrewer)
 library(foreign)
 library(readstata13)
 library(MASS)
@@ -35,10 +35,13 @@ for(icount in icount.list){
 
 #icount <- "UK" # options are UK, SOA, JAP, GER,CHI, BRA,AUS
 
-months.to.analyse <- 12
-use.trade.weights <- FALSE # TRUE
+months.to.analyse <- 12 #how many months lag to consider
+use.trade.weights <- FALSE # TRUE - weigh PPP by the trade weights
 detrend.data <- TRUE
-normalize.data <- TRUE; norm.factor <- 0.1
+normalize.data <- TRUE; norm.factor <- 0.1 #when renormalizing the data to be between 0 and 1, how much much additional "padding" to give on edges 
+factor.to.test.list <- c("Retail.Log","Retail.vs.USA.1",paste0("Retail.Log.",seq(1,6)))
+#Which combinations of AR/USDX/In-Sample Out Sample do you want to test
+include.AR.list <- include.USDX.list <- in.sample.list <- c(TRUE,FALSE)
 if(icount == "USA"){use.trade.weights <- TRUE} # TRUE}
 
 
@@ -154,12 +157,13 @@ retail.ppp.to.use <- retail.ppp.saved <- retail.ppp
 
 repeat{
 
-  n.factor.to.test <- 8; n.sample <- n.AR <- n.USDX <- 2; n.lags <- (months.to.analyse+1)
+  n.factor.to.test <- length(factor.to.test.list); 
+  n.sample <- length(in.sample.list); n.AR <- length(include.AR.list); n.USDX <- length(include.USDX.list); n.lags <- (months.to.analyse+1)
   n.models <- 8
   class.expected.count <- n.factor.to.test * n.sample * n.lags* n.AR * n.USDX * n.models
   response.expected.count <- n.factor.to.test * n.sample *  n.AR * n.USDX 
   
-  for(i.factor.to.test in c("Retail.Log","Retail.vs.USA.1",paste0("Retail.Log.",seq(1,6)))){
+  for(i.factor.to.test in factor.to.test.list){
     
     #Renormalize the Factor
     if(normalize.data){
@@ -172,9 +176,15 @@ repeat{
     
     ##Extreme Densities
     response.density <- quantile(factor.y,probs = c(.05,.95))#c(.01,.02,.05,.1,.3,.7,.9,.95,.98,.99))
+    #Add the +1SD/-1SD
+    response.density <- c(response.density, 'min.1SD'= mean(factor.y)-sd(factor.y), 'plus.1SD' = mean(factor.y)+sd(factor.y))
     original.response.density <- quantile(retail.ppp[,i.factor.to.test],probs = c(0.05,0.95))
+    #Add the +1SD/-1SD
+    original.response.density <- c(original.response.density, 'min.1SD'= mean(retail.ppp[,i.factor.to.test])-sd(retail.ppp[,i.factor.to.test]),
+                                   'plus.1SD' = mean(retail.ppp[,i.factor.to.test])+sd(retail.ppp[,i.factor.to.test]))
     
-    for(i.sample  in c(TRUE,FALSE))
+    
+    for(i.sample  in in.sample.list)
     {
       retail.ppp.saved[,i.factor.to.test] <- normalize(retail.ppp.to.use[,i.factor.to.test],norm.factor)
       if(i.sample){ #Looking at prediction within sample
@@ -196,8 +206,8 @@ repeat{
       }
       
       ##Now Loop Through Lags to calculate how performance changes with inclusion
-      for(include.USDX in c(TRUE,FALSE)){
-        for(include.AR in c(TRUE,FALSE)){
+      for(include.USDX in include.USDX.list){
+        for(include.AR in include.AR.list){
           print(paste0("Country: ",icount," Factor:",i.factor.to.test," Sample:",i.sample," USDX:",include.USDX," AR:",include.AR, " Dummies:",include.Dummy))
           
           try({if(run.classification){
@@ -254,7 +264,7 @@ repeat{
 if(run.classification){
 save(classification.results, file=paste0("Results\\",icount,"-AbsoluteRescaled-MultiLag-ClassificationResults.Rda"))}
 if(run.response){
-save(response.results, file=paste0("Results\\",icount,"-AbsoluteRescaled-MultiLag-ResponseResults.Rda"))}
+save(response.results, file=paste0("Results\\",icount,"-UKOnly-AbsoluteRescaled-MultiLag-ResponseResults.Rda"))}
 
 
 #load(paste0("Results\\",icount,"-Boot-ClassificationResults.Rda"))
@@ -281,10 +291,10 @@ chart.AR <- TRUE
 chart.Factor <- "Retail.Log"
 chart.USDX <- TRUE
 chart.inSample <- FALSE
-for(chart.AR in c(TRUE,FALSE)){
-  for(chart.Factor in c("Retail.Log","Retail.vs.USA.1",paste0("Retail.Log.",seq(1,6)))){
-    for(chart.USDX in c(TRUE,FALSE)){
-      for(chart.inSample in c(TRUE,FALSE)){
+for(chart.AR in include.AR.list){
+  for(chart.Factor in factor.to.test.list){
+    for(chart.USDX in include.USDX.list){
+      for(chart.inSample in in.sample.list){
         
         if(run.classification){
           tmp1 <- classification.results[classification.results[,"include.AR"]==chart.AR & classification.results[,"Factor"]== chart.Factor &
@@ -313,13 +323,13 @@ for(chart.AR in c(TRUE,FALSE)){
           additional.heading = paste0(" AR:", chart.AR, " Factor:", chart.Factor," USDX:",chart.USDX, " Sample:", chart.inSample)
           
           if(length(tmp1[[7]])>1){
-          png(paste0("Images\\NonLinear\\",icount,"\\Abs-Normalized-Tanh\\",icount,"-NN-",
+          png(paste0("Images\\NonLinear\\",icount,"\\1SD-5-95\\",icount,"-NN-",
                      "Factor.",chart.Factor,"-AR.",chart.AR,"-USDX.",chart.USDX,"-InSample.",chart.inSample,".png"),width=1000,height=600)
           
           if(normalize.data){optional.resize <- (max(retail.ppp[,chart.Factor])-min(retail.ppp[,chart.Factor]))*(1+2*norm.factor)}
             
           Chart.NonLin.Responses(tmp1[[7]], additional.heading, optional.color = brewer.pal(10,"RdGy"), 
-                                 optional.nmonths = months.to.analyse, response.density = response.density, optional.resize = 1)
+                                 optional.nmonths = months.to.analyse, response.density = response.density, optional.resize = optional.resize)
           dev.off()
           }
         }

@@ -73,9 +73,7 @@ Chart.NonLin.Responses <- function(temp.models, additional.heading = "", optiona
   
   #Derive Net Impact (Taking away response from 0 stimulation)
   #Normal response
-  temp.means1 <- (temp.means[,1] - temp.means[1,1])
-  temp.means2 <- (temp.means[,2] - temp.means[1,2])
-  temp.means <- cbind(temp.means1,temp.means2)
+  for(icol in seq_len(ncol(temp.means))){temp.means[,icol] <- temp.means[,icol]-temp.means[1,icol]}
   #Cumulative Response
   #temp.means[,(optional.nmnonths+3)] <- temp.means[,2:(optional.nmonths+1)] - temp.means[,1]
   
