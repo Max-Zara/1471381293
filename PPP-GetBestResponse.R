@@ -323,13 +323,16 @@ for(chart.AR in include.AR.list){
           additional.heading = paste0(" AR:", chart.AR, " Factor:", chart.Factor," USDX:",chart.USDX, " Sample:", chart.inSample)
           
           if(length(tmp1[[7]])>1){
-          png(paste0("Images\\NonLinear\\",icount,"\\1SD-5-95\\",icount,"-NN-",
+          png(paste0("Images\\NonLinear\\",icount,"\\1SD-5-95-Fan(NegSD)\\",icount,"-NN-",
                      "Factor.",chart.Factor,"-AR.",chart.AR,"-USDX.",chart.USDX,"-InSample.",chart.inSample,".png"),width=1000,height=600)
           
           if(normalize.data){optional.resize <- (max(retail.ppp[,chart.Factor])-min(retail.ppp[,chart.Factor]))*(1+2*norm.factor)}
             
           Chart.NonLin.Responses(tmp1[[7]], additional.heading, optional.color = brewer.pal(10,"RdGy"), 
-                                 optional.nmonths = months.to.analyse, response.density = response.density, optional.resize = optional.resize)
+                                 optional.nmonths = months.to.analyse, response.density = response.density, optional.resize = optional.resize
+                                 ,use.means = FALSE #chart deterministic (use.means = TRUE) or probabilistic (use.means = FALSE)
+                                 , factor.col = 4 # typically 1 = 5%, 2 = 95%, 3 = -1SD, 4 = +1SD
+                                 , optional.percentiles = seq(0.05,0.95,0.05))
           dev.off()
           }
         }
