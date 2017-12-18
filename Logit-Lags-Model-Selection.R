@@ -102,7 +102,8 @@ country.plus.usa.retail.ppp <- country.plus.usa.retail.ppp[,!str_detect(colnames
 head(country.plus.usa.retail.ppp) 
 
 #Get Seasonal Dummies
-country.plus.usa.ppp <- create.monthly.dummies(country.plus.usa.retail.ppp)
+if(include.Dummy){
+country.plus.usa.ppp <- create.monthly.dummies(country.plus.usa.retail.ppp)}
 colnames(country.plus.usa.ppp) <- gsub("ts.retail.","",colnames(country.plus.usa.ppp))
 colnames(country.plus.usa.ppp) <- gsub(".x","",colnames(country.plus.usa.ppp))
 head(country.plus.usa.ppp)

@@ -60,21 +60,10 @@ i.retail <- as.data.frame(country.data[2]);
 usa.retail <- as.data.frame(usa.country.data[2])
 
 ##CHART ALL TRADE VOLUME
-###Get the original Non-TW values
-  i.ppp.nontw <- as.data.frame(country.data[1])
-  retail.ppp.nontw <- Merge.Retail.And.EPPP(i.retail, i.ppp.nontw, icount=icount)
-  
-  all.ppp <- as.data.frame(all.data[1])
-  pivot.all.ppp <- cast(all.ppp[all.ppp$Measure.Names=="Eppp",],Date ~ Country,value="Value",fun.aggregate = mean)
-  
-  x2 <- sapply(seq_len(ncol(pivot.all.ppp)), function(x) pivot.all.ppp[,x] [min(which(!is.na(pivot.all.ppp[,x])))])
-  x3 <- sapply(seq_len(ncol(pivot.all.ppp)), function(x) pivot.all.ppp[,1][which(pivot.all.ppp[,x]==x2[x])])  
-  x3 <- as.Date(x3,origin ="1970-01-01")
-  names(x3) <- colnames(pivot.all.ppp)
-  
-  head(pivot.all.ppp)
-  reset_par()
-  matplot(pivot.all.ppp,type='l')
+chart.all.series <- TRUE
+if(chart.all.series){
+  Chart.All.Series(all.data,country.data, i.retail, icount)
+}
 #################################
 
 ##If want PPP weighted by Trade Volume
@@ -86,7 +75,6 @@ if(use.trade.weights){
   #UK
   if(icount=="UK"){
   trade.weights <- Get.Trade.Weights(all.data, icount, source.to.use = "BBG", method.to.use = "natural",to.Chart=FALSE)}
-  tail(trade.weights)
   retail.ppp.tw <- retail.ppp <- Merge.Retail.And.EPPP(i.retail, i.ppp, use.trade.weights=TRUE, trade.weights, icount)
   usa.retail.ppp <- Merge.Retail.And.EPPP(usa.retail, i.ppp, use.trade.weights=TRUE, trade.weights, icount)
 }else{
@@ -96,13 +84,10 @@ if(use.trade.weights){
 }
 
 ######
-#See what data series looks like
-reset_par(); par(mfrow=c(1,2))
-plot(retail.ppp$Date,retail.ppp$Retail.Log,type='l',col="red",main=paste0("Retail Sales: ",icount))
-plot(retail.ppp$Date,retail.ppp$PPP,type='l',col="darkred",main=paste0("PPP: ",icount),ylim=range(c(retail.ppp$PPP,retail.ppp.nontw$PPP)))
-lines(retail.ppp.nontw$Date,retail.ppp.nontw$PPP,col="red")
-legend("topleft",legend=c("Trade-Weighted","USD-PPP"),col=c("darkred","red"),pch=0.8)
-##can plot what the PPP trade-weighted vs non-trade weighted looks like
+chart.retail.vs.ppp <- TRUE
+if(chart.retail.vs.ppp){
+Chart.Retail.vs.PPP(i.retail, country.data, icount, retail.ppp)}
+
 
 #Restrict number of dates (UK PPP not full before 2012)
 if(icount=="UK"){retail.ppp <- retail.ppp[retail.ppp$Date >= as.Date("2012-01-01"),]}
@@ -112,6 +97,7 @@ if(icount=="UK"){retail.ppp <- retail.ppp[retail.ppp$Date >= as.Date("2012-01-01
 library(timeDate)
 if(icount != "USA"){usa.retail.ppp$Date <- as.Date(timeLastDayInMonth(usa.retail.ppp$Date))}
 
+####Compare Lags vs USA going out 6 months out
 country.plus.usa.retail.ppp <- merge(retail.ppp, usa.retail.ppp, by="Date")
 for(i.lag in 1:6){
   country.plus.usa.retail.ppp$temp <- country.plus.usa.retail.ppp[,paste0("Retail.Log.",i.lag,".x")] - country.plus.usa.retail.ppp[,paste0("Retail.Log.",i.lag,".y")]
@@ -125,7 +111,8 @@ country.plus.usa.retail.ppp <- country.plus.usa.retail.ppp[,!str_detect(colnames
 head(country.plus.usa.retail.ppp) 
 
 #Get Seasonal Dummies
-country.plus.usa.ppp <- create.monthly.dummies(country.plus.usa.retail.ppp)
+if(include.Dummy){
+country.plus.usa.ppp <- create.monthly.dummies(country.plus.usa.retail.ppp)}
 colnames(country.plus.usa.ppp) <- gsub("ts.retail.","",colnames(country.plus.usa.ppp))
 colnames(country.plus.usa.ppp) <- gsub(".x","",colnames(country.plus.usa.ppp))
 head(country.plus.usa.ppp)

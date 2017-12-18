@@ -5,10 +5,13 @@ library(fanplot)
 
 Chart.NonLin.Responses <- function(temp.models, additional.heading = "", optional.divisor = 1, optional.color = brewer.pal(length(response.density),"Paired")
                                    , optional.nmonths = 12, response.density, optional.resize = 1 
-                                   ,use.means = TRUE, factor.col = 4, optional.percentiles = seq(0.05,0.95,0.05)){
+                                   ,use.means = TRUE, factor.col = 4, optional.percentiles = seq(0.05,0.95,0.05),
+                                   chart.single = TRUE, chart.cumulative = TRUE, add.from.row = 0){
   
-  par(mfrow=c(1,2))
+  if(chart.single && chart.cumulative){
+  par(mfrow=c(1,2))}else{par(mfrow=c(1,1))}
   if(use.means){
+    #Chart the Means
     temp.means <- matrix(colSums(temp.models$t)/nrow(temp.models$t),nrow=((optional.nmonths+1)*2+1))
     
     #First response is 0, then next 13 is response of 0 to 12 lags, then next 13 is cumulative 0 to 12 lags for total of 27 responses
@@ -20,19 +23,22 @@ Chart.NonLin.Responses <- function(temp.models, additional.heading = "", optiona
     #Cumulative Response
     #temp.means[,(optional.nmnonths+3)] <- temp.means[,2:(optional.nmonths+1)] - temp.means[,1]
     
+    if(chart.single){
     matplot(temp.means[2:(optional.nmonths+2),]*optional.resize,type='l',col=optional.color,lty=1,lwd=2,main=paste0("Monthly:",additional.heading),
             xlab = "No of Lags of PPP",ylab="Response")
     grid(NULL,NULL,col="darkgrey",lwd=2); abline(h=0)
     legend("bottomleft",legend = names(response.density), 
            col = optional.color
-           , bg="transparent",bty='n',cex=1.5, pch=16)
+           , bg="transparent",bty='n',cex=1.5, pch=16)}
+    if(chart.cumulative){
     matplot(temp.means[(optional.nmonths+3):((optional.nmonths+1)*2+1),]*optional.resize,type='l',col=optional.color,lty=1,lwd=2,main=paste0("Cum:",additional.heading),
             xlab = "No of Lags of PPP",ylab="Response")
     grid(NULL,NULL,col="darkgrey",lwd=2); abline(h=0)
     legend("bottomleft",legend = names(response.density), 
            col = optional.color
-           , bg="transparent",bty='n',cex=1.5, pch=16)
+           , bg="transparent",bty='n',cex=1.5, pch=16)}
   }else{
+    #Generate Fan Plot
     temp.data <- temp.models$t[,1:27+(factor.col-1)*27]
     optional.color = colorRampPalette(c("tomato", "gray90"))
     for(irow in seq_len(nrow(temp.data))){ temp.data[irow,] <- temp.data[irow,]-temp.data[irow,1]}
@@ -46,16 +52,26 @@ Chart.NonLin.Responses <- function(temp.models, additional.heading = "", optiona
     cum.coefval <- matrix(NA, nrow=length(p),ncol=k)
     for(i in 1:k){
       coefval[,i] <- quantile(temp.data[,1+i]*optional.resize/optional.divisor,p)
-      cum.coefval[,i] <- quantile(temp.data[,1+optional.nmonths+i]*optional.resize/optional.divisor,p)}
+      if(i > add.from.row){
+        #subtract the values from which you are adding and then calculate percentile
+        cum.coefval[,i] <- quantile((temp.data[,1+optional.nmonths+i]-temp.data[,1+optional.nmonths+add.from.row])
+                                    *optional.resize/optional.divisor,p)
+      }else{
+        cum.coefval[,i] <- 0
+      }}
+      
+      #cum.coefval[,i] <- quantile(temp.data[,1+optional.nmonths+i]*optional.resize/optional.divisor,p)
+      
     
     #Chart the data
-    par(mfrow=c(1,2))
-    for(i.data in c("Monthly Coef","Cumulative Coef")){
+    data.to.chart.list <- c(if(chart.single){"Monthly Coef"},if(chart.cumulative){"Cumulative Coef"})
+    
+    for(i.data in data.to.chart.list){
       if(i.data=="Monthly Coef"){i.frame <- coefval}else{i.frame<-cum.coefval}
       y <- seq(min(i.frame),
                max(i.frame),length.out=((optional.nmonths+1)))
       
-      plot(0:optional.nmonths,y, type = "l", col = "lightgrey", lwd = 0, 
+      plot(0:optional.nmonths,y, type = "l", col = "white", lwd = 0, 
            xlim = c(0,optional.nmonths), ylim = c(min(y), max(y)), 
            ylab="Coefficient",xlab="Months",main=paste0(additional.heading,i.data," After ",nrow(temp.models$t)," Straps"))
       grid(NULL,NULL,col="darkgrey",lwd=2)
@@ -65,6 +81,7 @@ Chart.NonLin.Responses <- function(temp.models, additional.heading = "", optiona
           anchor = 0, 
           fan.col = optional.color,  
           ln = NULL, rlab = NULL)
+      lines(0:optional.nmonths,apply(i.frame,2,FUN=median),col="darkred",lwd=2)
       abline(h=0)}
   }
 }
@@ -202,6 +219,58 @@ Get.Cols.To.Use <- function(i.lag, include.USDX, include.AR, include.Dummy){
 }
 
 
+Get.Linear.Density.Response <- function(retail.analysis, retail.predict, cols.to.use, i.factor.to.test,
+                                           i.lag, include.USDX, include.AR, response.density, include.Dummy, original.response.density){ 
+  print(paste0(Sys.time()," Started Linear Response"))
+  
+  train.x <- retail.analysis[complete.cases(retail.analysis), c(cols.to.use,i.factor.to.test)]
+  train.y <- retail.analysis[complete.cases(retail.analysis),i.factor.to.test]
+  
+  try({
+    boot.get.lin <- function(data,indices,train.y,
+                                i.lag, include.USDX, include.AR, cols.to.use,response.density){
+      
+      d <- data[indices,]; train.y <- train.y[indices];
+      
+      f <- as.formula(paste(i.factor.to.test,"~."))
+      
+      #decision.model = lm(f,data=d)
+      decision.model = glm(f,data=d,family="gaussian")
+      
+      default.response.input <- Get.Response.Input(i.lag, include.USDX, include.AR, include.Dummy, cols.to.use)
+      response.results <- matrix(0,nrow=1,ncol=ncol(default.response.input)*length(response.density))
+      
+      for(i.density in 1:length(response.density)){
+        
+        #Get the Response Matrix
+        response.input <- Get.Response.Input(i.lag, include.USDX, include.AR, include.Dummy, cols.to.use, response.density[i.density])
+        
+        #Loop Through the Response Input Matrices (0 effect, only PPP(0), then PPP(1)....)
+        for(i.input in 1:ncol(response.input)){ 
+          
+          response.impact <-  predict(decision.model, as.data.frame(t(response.input[,i.input])))
+          
+          #Get the response (re-scaled)
+          response.results[i.input + (i.density-1)*ncol(default.response.input)] <- response.impact/response.density[i.density]*sign(original.response.density[i.density])
+        }
+      }
+      
+      #First response is 0, then next 13 is response of 0 to 12 lags, then next 13 is cumulative 0 to 12 lags for total of 27 responses
+      #Add on for each density to calculate
+      lin.responses <- c(unlist(response.results))
+      return(lin.responses)
+    }
+    
+    #First is MAE, Second is RMSE, Then table of responses based on response.input
+    lin.models <- boot(train.x,boot.get.lin,R=100,stype="i",
+                          train.y= train.y,
+                          i.lag = i.lag, include.USDX = include.USDX, include.AR = include.AR, cols.to.use = cols.to.use,
+                          response.density = response.density)
+    
+    return(lin.models)
+  },silent=TRUE)
+}
+
 Get.NonLinear.Density.Response <- function(retail.analysis, retail.predict, cols.to.use, Model.Form="NN",i.factor.to.test,
                             i.lag, include.USDX, include.AR, response.density, include.Dummy, original.response.density){ 
   print(paste0(Sys.time()," Started ",Model.Form))
@@ -269,8 +338,30 @@ Get.NonLinear.Density.Response <- function(retail.analysis, retail.predict, cols
   },silent=TRUE)
 }
 
-Calculate.NonLinear.Responses <- function(retail.analysis, retail.predict, i.sample, i.lag, include.USDX,
-                                          include.AR, i.factor.to.test, response.density, include.Dummy, original.response.density){
+Calculate.Model.Responses <- function(Model.Form = "NN",retail.analysis, retail.predict, i.sample, i.lag, include.USDX,
+                                include.AR, i.factor.to.test, response.density, include.Dummy, original.response.density){
+  cols.to.use <- Get.Cols.To.Use(i.lag,include.USDX, include.AR, include.Dummy)
+  results.frame <- list()
+  
+  response.results <- if(Model.Form == "NN"){
+    Get.NonLinear.Density.Response(retail.analysis, retail.predict, cols.to.use
+                                   , Model.Form=Model.Form,i.factor.to.test, i.lag
+                                   , include.USDX, include.AR, response.density, include.Dummy, original.response.density)
+  }else if(Model.Form == "OLS"){
+    Get.Linear.Density.Response(retail.analysis, retail.predict, cols.to.use
+                                , i.factor.to.test, i.lag
+                                , include.USDX, include.AR, response.density, include.Dummy, original.response.density)
+  }
+  #Chart.Fan.Models(neural.results,"NEURAL NET ")
+  results.frame[[length(results.frame)+1]] <- response.results
+  names(results.frame)[length(results.frame)] <- Model.Form
+  
+  print("ReturningResults")
+  return(results.frame)
+}
+
+
+Calculate.NonLinear.Responses <- function(Model.Form = "NN",retail.analysis, retail.predict, i.sample, i.lag, include.USDX,                                          include.AR, i.factor.to.test, response.density, include.Dummy, original.response.density){
   cols.to.use <- Get.Cols.To.Use(i.lag,include.USDX, include.AR, include.Dummy)
   results.frame <- list()
   

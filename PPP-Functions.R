@@ -69,6 +69,37 @@ Get.Weighted.PPP <- function(trade.weights, icount, all.data){
   }
 }
 
+Chart.Retail.vs.PPP <- function(i.retail, country.data, icount, retail.ppp){
+  #See what data series looks like
+  i.ppp.nontw <- as.data.frame(country.data[1])
+  retail.ppp.nontw <- Merge.Retail.And.EPPP(i.retail, i.ppp.nontw, icount=icount)
+  
+  reset_par(); par(mfrow=c(1,2))
+  plot(retail.ppp$Date,retail.ppp$Retail.Log,type='l',col="red",main=paste0("Retail Sales: ",icount))
+  plot(retail.ppp$Date,retail.ppp$PPP,type='l',col="darkred",main=paste0("PPP: ",icount),ylim=range(c(retail.ppp$PPP,retail.ppp.nontw$PPP)))
+  lines(retail.ppp.nontw$Date,retail.ppp.nontw$PPP,col="red")
+  legend("topleft",legend=c("Trade-Weighted","USD-PPP"),col=c("darkred","red"),pch=0.8)
+  ##can plot what the PPP trade-weighted vs non-trade weighted looks like
+}
+
+Chart.All.Series <- function(all.data,country.data, i.retail, icount){
+  i.ppp.nontw <- as.data.frame(country.data[1])
+  retail.ppp.nontw <- Merge.Retail.And.EPPP(i.retail, i.ppp.nontw, icount=icount)
+  
+  all.ppp <- as.data.frame(all.data[1])
+  pivot.all.ppp <- cast(all.ppp[all.ppp$Measure.Names=="Eppp",],Date ~ Country,value="Value",fun.aggregate = mean)
+  
+  x2 <- sapply(seq_len(ncol(pivot.all.ppp)), function(x) pivot.all.ppp[,x] [min(which(!is.na(pivot.all.ppp[,x])))])
+  x3 <- sapply(seq_len(ncol(pivot.all.ppp)), function(x) pivot.all.ppp[,1][which(pivot.all.ppp[,x]==x2[x])])  
+  x3 <- as.Date(x3,origin ="1970-01-01")
+  names(x3) <- colnames(pivot.all.ppp)
+  
+  head(pivot.all.ppp)
+  reset_par()
+  matplot(pivot.all.ppp,type='l')
+  legend("bottomleft",legend=colnames(pivot.all.ppp)[-1], col = 1:ncol(pivot.all.ppp),pch=0.8)
+}
+
 Get.Trade.Weights <- function(all.data, icount, source.to.use = "BBG", method.to.use = "natural",to.Chart=FALSE){
   ppp.all <- as.data.frame(all.data[1]); retail.sales <- as.data.frame(all.data[2]); i.fx <- as.data.frame(all.data[3])
   importexport.all <- as.data.frame(all.data[4]);
@@ -229,7 +260,8 @@ Merge.Retail.And.EPPP.And.FX <- function(i.retail, i.ppp,i.fx){
 
 
 Merge.Retail.And.EPPP <- function(i.retail, i.ppp, use.trade.weights=FALSE, 
-                                  trade.weights=NULL, icount, detrend.data = FALSE, optional.detrend = "Monthly"){
+                                  trade.weights=NULL, icount, detrend.data = FALSE, optional.detrend = "Monthly"
+                                  ,optional.lags = 6){
   #Get Log Returns of Retail
   
   if(detrend.data){
@@ -249,7 +281,7 @@ Merge.Retail.And.EPPP <- function(i.retail, i.ppp, use.trade.weights=FALSE,
       
       i.retail.wlog <- cbind(i.retail, Retail.Log = c(0,residuals(monthly.dummy.model)))
       
-      for(i.lag in 1:6){
+      for(i.lag in 1:optional.lags){
         i.retail.wlog <- cbind(i.retail.wlog, c(rep(NA,i.lag),rollsum(residuals(monthly.dummy.model),k=i.lag)))
         colnames(i.retail.wlog)[ncol(i.retail.wlog)] <- paste0("Retail.Log.",i.lag)
       }
@@ -265,7 +297,8 @@ Merge.Retail.And.EPPP <- function(i.retail, i.ppp, use.trade.weights=FALSE,
       
       i.retail.wlog <- cbind(i.retail, Retail.Log = c(NA, diff(i.retail$Resid)))
       
-      for(i.lag in 1:6){
+      for(i.lag in 1:optional.lags){
+        print(i.lag)
         i.retail.wlog <- cbind(i.retail.wlog, c(rep(NA,i.lag),diff(i.retail$Resid,lag=i.lag)))
         colnames(i.retail.wlog)[ncol(i.retail.wlog)] <- paste0("Retail.Log.",i.lag)
       }
@@ -274,7 +307,7 @@ Merge.Retail.And.EPPP <- function(i.retail, i.ppp, use.trade.weights=FALSE,
   }else{
     i.retail.wlog <- cbind(i.retail,Retail.Log = c(NA,diff(log(i.retail$Value))))
     
-    for(i.lag in 1:6){
+    for(i.lag in 1:optional.lags){
       i.retail.wlog <- cbind(i.retail.wlog, c(rep(NA,i.lag),diff(log(i.retail$Value),lag=i.lag)))
       colnames(i.retail.wlog)[ncol(i.retail.wlog)] <- paste0("Retail.Log.",i.lag)
     }
