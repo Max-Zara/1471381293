@@ -21,7 +21,9 @@ Read.All.Data <- function(){
   importexport.all <- read.csv("ImportExportTradeRenamed.csv")
   importexport.all$Date <- as.Date(importexport.all$Date)
   
-  all.data <- list(ppp.all,retail.sales,currency.all,importexport.all)
+  cpi.all <- read.csv("CPI-UKUS.csv")
+  
+  all.data <- list(ppp.all,retail.sales,currency.all,importexport.all, cpi.all)
   return(all.data)
 }
 

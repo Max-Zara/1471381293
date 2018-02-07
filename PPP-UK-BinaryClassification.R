@@ -240,3 +240,28 @@ rect(-300,-1,0,2000,col=rgb(1,0,0,0.1), border = NULL, lwd = 0)
 }
 }
 
+
+
+###Apply for trading strategy
+
+
+stock.data <- read.csv("RetailersStock-UK.csv")
+stock.data$Date <- as.Date(stock.data$Date)
+head(stock.data)
+stock.reshaped <- dcast(stock.data, Date ~ Stock, FUN=mean, value.var="Price")
+head(stock.reshaped)
+stock.reshaped <- stock.reshaped[stock.reshaped$Date >= as.Date("2010-01-01"),]
+reset_par()
+matplot(as.Date(stock.reshaped$Date,origin="1990-01-01"),stock.reshaped[,-1],type='l',main=paste0("Stock Prices of (",paste(unique(stock.data$Stock),collapse=" "),")"),xaxt='n',xlab="Date",ylab="Price")
+axis.Date(1,as.Date(stock.reshaped$Date,origin="1990-01-01"),format="%m-%Y")
+legend("topleft",legend = colnames(stock.reshaped)[-1],col = 1:5
+       , bg="transparent",bty='n',cex=1.5, pch=16)
+
+
+ws.stock.retail <- merge(stock.reshaped,retail.analysis[,c("Retail.Log","Date")],by="Date")
+for(i.x in colnames(stock.reshaped)[-1]){
+  ws.stock.retail$newcol <- c(NA,diff(log(ws.stock.retail[,i.x])))
+  colnames(ws.stock.retail)[ncol(ws.stock.retail)] <- paste0(i.x,".Dif")
+} 
+library(GGally)
+ggscatmat(ws.stock.retail,columns = 7:12)
