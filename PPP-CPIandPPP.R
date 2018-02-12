@@ -59,6 +59,7 @@ usa.retail <- as.data.frame(usa.country.data[2])
 
 head(i.retail)
 
+
 ##CHART ALL TRADE VOLUME
 chart.all.series <- TRUE
 if(chart.all.series){
@@ -69,6 +70,24 @@ if(chart.all.series){
 i.ppp <- as.data.frame(country.data[1])
 retail.ppp <- Merge.Retail.And.EPPP(i.retail, i.ppp, icount=icount, detrend.data = detrend.data)
 usa.retail.ppp <- Merge.Retail.And.EPPP(usa.retail, i.ppp, icount=icount, detrend.data= detrend.data)
+
+###CALCULATE THE RETAIL GAPS
+filter.lambda = 14400
+uk.hp.filt <- hpfilter(retail.ppp$Retail, freq= filter.lambda)
+uk.hp.log.filt <- hpfilter(log(retail.ppp$Retail), freq= filter.lambda)
+
+us.hp.filt <- hpfilter(usa.retail.ppp$Retail, freq= filter.lambda)
+us.hp.log.filt <- hpfilter(log(usa.retail.ppp$Retail), freq= filter.lambda)
+
+reset_par(); par(mfrow=c(1,2))
+plot(retail.ppp$Retail,type='l', main="UK Retail Sales and Output Gap"); lines(uk.hp.filt$trend)
+plot(usa.retail.ppp$Retail,type='l', main="USA Retail Sales and Output Gap"); lines(us.hp.filt$trend)
+
+#plot(log(retail.ppp$Retail),type='l', main="LOG UK Retail Sales and Output Gap"); lines(uk.hp.log.filt$trend)
+#plot(log(usa.retail.ppp$Retail),type='l', main="LOG USA Retail Sales and Output Gap"); lines(us.hp.log.filt$trend)
+
+retail.ppp$Retail.Gap.UK <- uk.hp.log.filt$cycle
+usa.retail.ppp$Retail.Gap.US <- us.hp.log.filt$cycle
 
 cpi.all <- as.data.frame(all.data[5]); cpi.all$Date <- as.Date(cpi.all$Date)
 cpi.uk <- cpi.all[cpi.all$Country == "UK" & cpi.all$Type == "CPIH.2015",]; 
@@ -158,6 +177,48 @@ plot(country.plus.usa.ppp$Date, country.plus.usa.ppp$CPI.Dif, main="UK CPI vs US
 abline(h=0,col="red")
 plot(country.plus.usa.ppp$CPI.Dif,country.plus.usa.ppp$Retail.vs.USA, main = "CPI Diff vs Retail Diff")
 
+####
+
+retail.gap.data <- country.plus.usa.ppp[,c("Date","Retail.Gap.UK","Retail.Gap.US","PPP","PPP.Log")]
+retail.gap.data$Gap.UK.Dif <- c(NA,diff(retail.gap.data$Retail.Gap.UK))
+retail.gap.data$Gap.US.Dif <- c(NA,diff(retail.gap.data$Retail.Gap.US))
+retail.gap.data$UKUS.Dif <- retail.gap.data$Gap.UK.Dif - retail.gap.data$Gap.US.Dif
+
+reset_par(); par(mfrow=c(1,2))
+matplot(retail.gap.data[,c("Gap.UK.Dif","Gap.US.Dif","UKUS.Dif")],type='l'); abline(h=0)
+legend("topleft", legend=c("Gap.UK.Dif","Gap.US.Dif","UKUS.Dif"),cex=1.5, col=c(1,2,3),bty='n',pch=16)
+plot(retail.gap.data[,c("Gap.UK.Dif","Gap.US.Dif")]); abline(lm(retail.gap.data$Retail.Gap.US ~retail.gap.data$Retail.Gap.UK), col="red")
+reset_par(); par(mfrow=c(1,2))
+ccf(na.omit(retail.gap.data$Gap.UK.Dif),na.omit(retail.gap.data$Gap.US.Dif),main="Cross Correlation Function of Gap UK & Gap US")
+ccf(na.omit(retail.gap.data$PPP),na.omit(retail.gap.data$Gap.UK.Dif),main="Cross Correlation Function of PPP & Gap UK")
+ccf(na.omit(retail.gap.data$PPP),na.omit(retail.gap.data$Gap.US.Dif),main="Cross Correlation Function of PPP & Gap US")
+
+
+retail.gap <- Factors.Calculate.Lags(as.data.frame(retail.gap.data),6,c("UKUS.Dif","PPP","PPP.Log")) #optionally include USDX log
+
+###Using static PPP
+gap.f1 <- as.formula(paste0("UKUS.Dif ~ PPP",paste0(" + PPP.Lag.",seq(1,6),collapse="")))
+gap1.model <- lm(gap.f1, data = retail.gap)
+summary(gap1.model)
+anova(gap1.model)
+
+gap.f2 <- as.formula(paste0("UKUS.Dif ~ PPP",paste0(" + PPP.Lag.",seq(1,6),collapse=""),paste0(" + UKUS.Dif.Lag.",seq(1,6),collapse="")))
+gap2.model <- lm(gap.f2, data = retail.gap)
+summary(gap2.model)
+anova(gap2.model)
+
+##Using Changing PPP
+gap.log.f1 <- as.formula(paste0("UKUS.Dif ~ PPP.Log",paste0(" + PPP.Log.Lag.",seq(1,6),collapse="")))
+gap1.log.model <- lm(gap.log.f1, data = retail.gap)
+summary(gap1.log.model)
+anova(gap1.log.model)
+
+gap.log.f2 <- as.formula(paste0("UKUS.Dif ~ PPP.Log",paste0(" + PPP.Log.Lag.",seq(1,6),collapse=""),paste0(" + UKUS.Dif.Lag.",seq(1,6),collapse="")))
+gap2.log.model <- lm(gap.log.f2, data = retail.gap)
+summary(gap2.log.model)
+anova(gap2.log.model)
+
+
 
 
 #####
@@ -170,6 +231,10 @@ base.ppp.model <- lm(Retail.vs.USA ~ CPI.Dif + Eppp.Log, data = country.plus.usa
 summary(base.ppp.model)
 anova(base.ppp.model)
 
+ppp.f <- as.formula(paste0("Ratail.vs.USA ~ CPI.Dif + Eppp.Log",paste0(" + Eppp.Log.",seq(1,12),collapse="")))
+base.ppp.model <- lm(Retail.vs.USA ~ CPI.Dif + Eppp.Log, data = country.plus.usa.ppp)
+summary(base.ppp.model)
+anova(base.ppp.model)
 
 
 

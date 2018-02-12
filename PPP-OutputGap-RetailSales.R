@@ -7,9 +7,6 @@ source("Code//PPP-ResponseFunctions.R")
 #######################################################
 library(mFilter)
 
-
-
-
 library(RColorBrewer)
 library(foreign)
 library(readstata13)
@@ -133,19 +130,24 @@ plot(country.plus.usa.ppp$Date,country.plus.usa.ppp$Retail.Gap, main="Retail Gap
 plot(country.plus.usa.ppp$Date,country.plus.usa.ppp$PPP, main="PPP",type='l');
 plot(country.plus.usa.ppp$PPP,country.plus.usa.ppp$Retail.Gap,main="PPP vs Gap")
 
-#####
+#Calculate Lags
+retail.ppp <- Factors.Calculate.Lags(as.data.frame(country.plus.usa.ppp),months.to.analyse,c("Retail.Gap","PPP","Retail.Log","PPP.Log","Retail.vs.USA.1","Us.Log","Eppp.Log")) #optionally include USDX log
 
-base.model <- lm(Retail.Gap ~ PPP, data = country.plus.usa.ppp)
+
+#####
+ppp.f <- as.formula(paste0("Retail.Gap ~ PPP",paste0(" + PPP.Lag.",seq(1,12),collapse="")))
+base.model <- lm(ppp.f, data = retail.ppp)
 summary(base.model)
 anova(base.model)
 
-base.ppp.model <- lm(Retail.vs.USA ~ CPI.Dif + Eppp.Log, data = country.plus.usa.ppp)
-summary(base.ppp.model)
-anova(base.ppp.model)
+lag.f <- as.formula(paste0("Retail.Gap ~ PPP",paste0(" + PPP.Lag.",seq(1,6),collapse=""),paste0(" + Retail.Gap.Lag.",seq(1,6),collapse="")))
+lag.model <- lm(lag.f, data = retail.ppp)
+summary(lag.model)
+anova(lag.model)
 
 
 
-
+matplot(retail.ppp[,c("PPP","Eppp","Us")],type='l'); legend("topleft", legend=c("PPP","Eppp","Us"),cex=1.5, col=c(1,2,3),bty='n',pch=16)
 
 
 
@@ -174,7 +176,7 @@ anova(base.ppp.model)
 
 #Get calculation of how the Eppp and Retail Sales have shifted by 1 to 12 months in time
 #retail.ppp <- Factors.Calculate.Lags(retail.ppp,months.to.analyse,c("PPP.Log","Retail.Log","Usdx.Log"))
-retail.ppp <- Factors.Calculate.Lags(as.data.frame(country.plus.usa.ppp),months.to.analyse,c("Retail.Log","PPP.Log","Retail.vs.USA.1","Us.Log","Eppp.Log")) #optionally include USDX log
+retail.ppp <- Factors.Calculate.Lags(as.data.frame(country.plus.usa.ppp),months.to.analyse,c("PPP","Retail.Log","PPP.Log","Retail.vs.USA.1","Us.Log","Eppp.Log")) #optionally include USDX log
 #plot(retail.ppp$Date, retail.ppp$PPP, type="l",col="blue",main="PPP for UK", xlab = "Date",ylab="PPP value");grid(NULL,NULL,col="grey")
 
 #Take out Dates < 2016-06 (i.e. Brexit)
