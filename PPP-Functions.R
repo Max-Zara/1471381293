@@ -96,9 +96,13 @@ Chart.All.Series <- function(all.data,country.data, i.retail, icount){
   x3 <- as.Date(x3,origin ="1970-01-01")
   names(x3) <- colnames(pivot.all.ppp)
   
+  pivot.all.ppp$Date <- as.POSIXct(pivot.all.ppp$Date)
   head(pivot.all.ppp)
   reset_par()
-  matplot(pivot.all.ppp,type='l')
+  matplot(x=pivot.all.ppp$Date,y=pivot.all.ppp[,-1],type='l',xaxt='n',main="PPP Time Series for Dif Countries",ylab="PPP Level",xlab="Date")
+  axis.POSIXct(1,pivot.all.ppp$Date,pivot.all.ppp$Date,format="%m-%Y")
+  #axis.Date(1, at=seq(min(dd$saldt), max(dd$saldt), by="30 mon"), format="%m-%Y")
+  #axis.Date(1, at=1:nrow(pivot.all.ppp), format = "%m-%Y")
   legend("bottomleft",legend=colnames(pivot.all.ppp)[-1], col = 1:ncol(pivot.all.ppp),pch=0.8)
 }
 
